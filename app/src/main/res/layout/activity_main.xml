@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Background ImageView -->
+    <ImageView
+        android:id="@+id/bgImageView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/background"
+        android:scaleType="centerCrop"
+        android:alpha="0.3" />
+
+    <!-- App Name TextView -->
+    <TextView
+        android:id="@+id/tvAppName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="CodeQuest"
+        android:textSize="32sp"
+        android:textColor="@android:color/black"
+        android:fontFamily="sans-serif-black"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="50dp" />
+
+    <!-- Username Input Field -->
+    <EditText
+        android:id="@+id/etUsername"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Username"
+        android:inputType="textEmailAddress"
+        android:background="@android:color/white"
+        android:padding="10dp"
+        android:layout_below="@id/tvAppName"
+        android:layout_marginTop="30dp" />
+
+    <!-- Error Message for Email -->
+    <TextView
+        android:id="@+id/tvEmailError"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@android:color/holo_red_dark"
+        android:visibility="gone"
+        android:layout_below="@id/etUsername"
+        android:layout_marginTop="4dp" />
+
+    <!-- Password Input Field -->
+    <EditText
+        android:id="@+id/etPassword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Password"
+        android:inputType="textPassword"
+        android:background="@android:color/white"
+        android:padding="10dp"
+        android:layout_below="@id/tvEmailError"
+        android:layout_marginTop="16dp" />
+
+    <!-- Error Message for Password -->
+    <TextView
+        android:id="@+id/tvPasswordError"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@android:color/holo_red_dark"
+        android:visibility="gone"
+        android:layout_below="@id/etPassword"
+        android:layout_marginTop="4dp" />
+
+    <!-- Login Button -->
+    <Button
+        android:id="@+id/btnLogin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Login"
+        android:layout_below="@id/tvPasswordError"
+        android:layout_marginTop="16dp"
+        android:background="@android:color/holo_blue_light"
+        android:textColor="@android:color/white" />
+
+    <!-- Register Button -->
+    <Button
+        android:id="@+id/btnRegister"
+        android:layout_width="150dp"
+        android:layout_height="50dp"
+        android:text="Register"
+        android:textSize="18sp"
+        android:layout_below="@id/btnLogin"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="16dp"
+        android:background="@android:color/transparent"
+        android:textColor="@android:color/black"
+        android:padding="10dp" />
+
+    <!-- Forgot Password Button -->
+    <Button
+        android:id="@+id/btnForgotPassword"
+        android:layout_width="250dp"
+        android:layout_height="50dp"
+        android:text="Forgot Password?"
+        android:textSize="18sp"
+        android:layout_below="@id/btnLogin"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="16dp"
+        android:background="@android:color/transparent"
+        android:textColor="@android:color/black"
+        android:padding="10dp" />
+</RelativeLayout>
