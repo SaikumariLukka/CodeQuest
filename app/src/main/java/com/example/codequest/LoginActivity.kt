@@ -30,6 +30,11 @@ class LoginActivity : ComponentActivity() {
         setContent {
             CodeQuestTheme {
                 LoginScreen(
+                    onLoginSuccess = {
+                        val homeIntent = Intent(this, HomeActivity::class.java)
+                        startActivity(homeIntent)
+                        finish() // Optional: Close the login activity
+                    },
                     onSignUpClicked = {
                         val signUpIntent = Intent(this, SignUpActivity::class.java)
                         startActivity(signUpIntent)
@@ -41,10 +46,14 @@ class LoginActivity : ComponentActivity() {
 }
 
 @Composable
-fun LoginScreen(onSignUpClicked: () -> Unit) {
+fun LoginScreen(
+    onLoginSuccess: () -> Unit,
+    onSignUpClicked: () -> Unit
+) {
     var username by remember { mutableStateOf(TextFieldValue("")) }
     var password by remember { mutableStateOf(TextFieldValue("")) }
-    var passwordVisible by remember { mutableStateOf(false) } // Toggle for password visibility
+    var passwordVisible by remember { mutableStateOf(false) }
+    var loginError by remember { mutableStateOf(false) } // To display login error
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -53,7 +62,7 @@ fun LoginScreen(onSignUpClicked: () -> Unit) {
             painter = painterResource(id = R.drawable.background),
             contentDescription = "Background Image",
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop // Scale and crop to fill the screen
+            contentScale = ContentScale.Crop
         )
 
         Column(
@@ -63,14 +72,13 @@ fun LoginScreen(onSignUpClicked: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Logo Image
             Image(
-                painter = painterResource(id = R.drawable.logo), // Replace with your logo's resource ID
+                painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Logo",
                 modifier = Modifier
-                    .size(250.dp) // Set desired size for the logo
+                    .size(250.dp)
                     .padding(bottom = 15.dp),
-                contentScale = ContentScale.Fit // Scale the logo proportionally
+                contentScale = ContentScale.Fit
             )
 
             OutlinedTextField(
@@ -82,7 +90,6 @@ fun LoginScreen(onSignUpClicked: () -> Unit) {
                     .padding(bottom = 16.dp)
             )
 
-            // Password field with visibility toggle
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -99,8 +106,23 @@ fun LoginScreen(onSignUpClicked: () -> Unit) {
                 }
             )
 
+            if (loginError) {
+                Text(
+                    text = "Invalid username or password",
+                    color = Color.Red,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
             Button(
-                onClick = { /* Handle login action here */ },
+                onClick = {
+                    // Simulate login logic
+                    if (username.text == "user" && password.text == "password") {
+                        onLoginSuccess()
+                    } else {
+                        loginError = true
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
