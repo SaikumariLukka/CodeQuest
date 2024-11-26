@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">CodeQuest</string>
+    <string name="default_web_client_id">125894436753-cmpti0jf2j3rn6m7nolq70cciubaf9tf.apps.googleusercontent.com</string>
 
 </resources>
