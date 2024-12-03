@@ -23,9 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.codequest.api.RetrofitInstance
 import com.example.codequest.api.models.QuizResponse
 import com.example.codequest.ui.theme.CodeQuestTheme
@@ -40,7 +42,9 @@ class HomeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             CodeQuestTheme {
-                MainScreen()
+                MainScreen { subject, onResult ->
+                    fetchQuizQuestions(subject, onResult)
+                }
             }
         }
     }
@@ -71,7 +75,7 @@ class HomeActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen() {
+fun MainScreen(fetchQuestions: (String, (QuizResponse?) -> Unit) -> Unit) {
     val navController = rememberNavController()
 
     Scaffold(
@@ -85,6 +89,13 @@ fun MainScreen() {
             composable("home") { HomeScreen(navController) }
             composable("leaderboard") { LeaderboardScreen() }
             composable("profile") { ProfileScreen() }
+            composable(
+                route = "quiz/{subjectIndex}",
+                arguments = listOf(navArgument("subjectIndex") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val subjectIndex = backStackEntry.arguments?.getInt("subjectIndex") ?: 0
+                QuizScreen(subjectIndex)
+            }
         }
     }
 }
@@ -149,10 +160,11 @@ fun HomeScreen(navController: NavHostController) {
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            subjects.forEach { subject ->
+            subjects.forEachIndexed { index, subject ->
                 Button(
                     onClick = {
-                        navController.navigate("quiz/$subject")
+                        // Pass the subject index instead of the subject name
+                        navController.navigate("quiz/$index")
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -165,68 +177,6 @@ fun HomeScreen(navController: NavHostController) {
                 ) {
                     Text(text = subject, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun QuizScreen(subject: String, fetchQuestions: (String, (QuizResponse?) -> Unit) -> Unit) {
-    var quizData by remember { mutableStateOf<QuizResponse?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(subject) {
-        fetchQuestions(subject) { response ->
-            quizData = response
-            isLoading = false
-        }
-    }
-
-    if (isLoading) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
-    } else {
-        quizData?.let { quiz ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Quiz: $subject",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                Text(text = "Follow the instructions and answer the questions carefully.")
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        // Start the quiz
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF42A5F5),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text(text = "Start Quiz", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        } ?: run {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Failed to load quiz data. Please try again.",
-                    color = Color.Red
-                )
             }
         }
     }

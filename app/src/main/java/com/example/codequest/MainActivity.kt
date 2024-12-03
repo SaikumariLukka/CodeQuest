@@ -1,5 +1,3 @@
-
-
 package com.example.codequest
 
 import android.content.Intent
@@ -20,15 +18,9 @@ import androidx.compose.ui.unit.sp
 import com.example.codequest.ui.theme.CodeQuestTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.example.codequest.LoginActivity
-import com.example.codequest.R
-
-import androidx.compose.foundation.background
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Brush
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,15 +28,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CodeQuestTheme {
-                SplashScreen { // After splash screen, navigate based on login status
+                SplashScreen { // Navigate after splash screen
                     val isLoggedIn = checkIfUserIsLoggedIn()
                     if (isLoggedIn) {
-                        // Navigate to Main Content
-                        setContent {
-                            MainContent()
-                        }
+                        // If user is logged in, navigate to HomeActivity
+                        startActivity(Intent(this, HomeActivity::class.java))
+                        finish() // Close MainActivity
                     } else {
-                        // Navigate to LoginActivity
+                        // If not logged in, navigate to LoginActivity
                         startActivity(Intent(this, LoginActivity::class.java))
                         finish() // Close MainActivity
                     }
@@ -54,7 +45,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkIfUserIsLoggedIn(): Boolean {
-        return false // Replace with actual login check
+        // Replace this with actual logic to check login status
+        return false
     }
 }
 
@@ -73,28 +65,25 @@ fun SplashScreen(onTimeout: () -> Unit) {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // Background Image with a translucent overlay to reduce contrast
+        // Background Image with a translucent overlay
         Image(
             painter = painterResource(id = R.drawable.background),
             contentDescription = "Background Image",
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop // Scales and crops to fill the screen
+            contentScale = ContentScale.Crop
         )
-
-
 
         // Logo Image
         Image(
             painter = painterResource(id = R.drawable.logo), // Replace with your logo's resource ID
             contentDescription = "Logo",
             modifier = Modifier
-                .size(400.dp) // Set desired size for the logo
+                .size(400.dp)
                 .padding(bottom = 15.dp),
-            contentScale = ContentScale.Fit // Scale the logo proportionally
+            contentScale = ContentScale.Fit
         )
     }
 }
-
 
 @Composable
 fun MainContent() {
@@ -116,7 +105,12 @@ fun MainContent() {
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "Welcome to CodeQuest!", color = Color.White)
+                    Text(
+                        text = "Welcome to CodeQuest!",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 }
             }
         )
