@@ -35,11 +35,8 @@ import com.example.codequest.api.RetrofitInstance
 import com.example.codequest.api.models.QuizResponse
 import com.example.codequest.ui.theme.CodeQuestTheme
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import com.google.firebase.firestore.FirebaseFirestore
 
 class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,41 +48,71 @@ class HomeActivity : ComponentActivity() {
                 }
             }
         }
+
+        // Call this to add sample data for testing purposes
+        addSampleData()
     }
 
     private fun fetchQuizQuestions(subject: String, onResult: (QuizResponse?) -> Unit) {
-        // Map subjects to Open Trivia Database category IDs
-        val category = when (subject) {
-            "Python", "Object Oriented Programming", "Machine Learning", "Data Science" -> 18 // Computers category
-            "SQL", "Power BI" -> 19 // Mathematics category (or use another relevant category)
-            else -> 18 // Default to Computers
-        }
+        val db = FirebaseFirestore.getInstance()
 
-        val call = RetrofitInstance.quizApiService.getQuizQuestions(
-            amount = 10, // Number of questions
-            category = category,
-            type = "multiple" // Multiple-choice questions
-        )
+        // Firestore path assuming each subject has a document
+        val quizRef = db.collection("quizzes").document(subject)
 
-        call.enqueue(object : Callback<QuizResponse> {
-            override fun onResponse(call: Call<QuizResponse>, response: Response<QuizResponse>) {
-                if (response.isSuccessful) {
-                    onResult(response.body())
+        quizRef.get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    // Assuming you have a QuizResponse object in Firestore with questions
+                    val quizResponse = document.toObject(QuizResponse::class.java)
+                    onResult(quizResponse)
                 } else {
-                    showToast("Failed to load quiz questions. Error: ${response.code()}")
+                    showToast("No quiz found for this subject.")
                     onResult(null)
                 }
             }
-
-            override fun onFailure(call: Call<QuizResponse>, t: Throwable) {
-                showToast("Network failure: ${t.message}")
+            .addOnFailureListener { exception ->
+                showToast("Error loading quiz: ${exception.message}")
                 onResult(null)
             }
-        })
     }
 
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    // Sample data insertion for Firestore
+    private fun addSampleData() {
+        val db = FirebaseFirestore.getInstance()
+
+        // Sample data for Python quiz
+        val pythonQuiz = mapOf(
+            "questions" to listOf(
+                mapOf(
+                    "question" to "What is Python?",
+                    "options" to listOf("Programming Language", "Animal", "Country", "Food"),
+                    "correctAnswer" to "Programming Language"
+                ),
+                mapOf(
+                    "question" to "Which of these is used to define a function in Python?",
+                    "options" to listOf("def", "function", "fun", "fn"),
+                    "correctAnswer" to "def"
+                ),
+                mapOf(
+                    "question" to "What is the output of print(2 + 2)?",
+                    "options" to listOf("2", "4", "22", "Error"),
+                    "correctAnswer" to "4"
+                )
+            )
+        )
+
+        // Add data to Firestore with "Python" as the document ID
+        db.collection("quizzes").document("Python").set(pythonQuiz)
+            .addOnSuccessListener {
+                showToast("Sample data added successfully.")
+            }
+            .addOnFailureListener { e ->
+                showToast("Error adding sample data: ${e.message}")
+            }
     }
 }
 
@@ -210,7 +237,3 @@ fun HomeScreen(navController: NavHostController) {
         }
     }
 }
-
-
-
-

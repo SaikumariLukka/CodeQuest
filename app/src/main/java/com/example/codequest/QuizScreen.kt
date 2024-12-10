@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,27 +36,46 @@ fun QuizScreen(subject: String) {
     var currentQuestionIndex by remember { mutableIntStateOf(0) }
     var selectedAnswers by remember { mutableStateOf(mutableMapOf<Int, String>()) }
     var showResults by remember { mutableStateOf(false) }
+    var score by remember { mutableStateOf(0) }
 
-    // Mock data for the quiz questions
+    // Mock Python-related quiz questions
     LaunchedEffect(subject) {
         quizQuestions = listOf(
             QuizQuestion(
-                question = "What is the capital of France?",
-                options = listOf("Paris", "London", "Rome", "Berlin"),
-                category = "Geography", // Provide the category
-                correctAnswer = "Paris" // Provide the correct answer
+                question = "What is Python?",
+                options = listOf("Programming language", "Snake", "IDE", "Game"),
+                category = "Python Basics",
+                correctAnswer = "Programming language"
             ),
             QuizQuestion(
-                question = "What is 2 + 2?",
-                options = listOf("3", "4", "5", "6"),
-                category = "Math", // Provide the category
-                correctAnswer = "4" // Provide the correct answer
+                question = "Which of the following is a Python framework?",
+                options = listOf("Django", "Angular", "React", "Vue"),
+                category = "Python Frameworks",
+                correctAnswer = "Django"
             ),
             QuizQuestion(
-                question = "Which planet is known as the Red Planet?",
-                options = listOf("Earth", "Mars", "Jupiter", "Venus"),
-                category = "Science", // Provide the category
-                correctAnswer = "Mars" // Provide the correct answer
+                question = "What is the output of 'print(2**3)'?",
+                options = listOf("6", "8", "4", "2"),
+                category = "Python Arithmetic",
+                correctAnswer = "8"
+            ),
+            QuizQuestion(
+                question = "Which keyword is used to define a function in Python?",
+                options = listOf("function", "def", "lambda", "define"),
+                category = "Python Functions",
+                correctAnswer = "def"
+            ),
+            QuizQuestion(
+                question = "What is the use of 'break' in Python?",
+                options = listOf("Exits a loop", "Stops the program", "Continues a loop", "Starts a loop"),
+                category = "Python Loops",
+                correctAnswer = "Exits a loop"
+            ),
+            QuizQuestion(
+                question = "What is the correct file extension for Python files?",
+                options = listOf(".java", ".py", ".txt", ".cpp"),
+                category = "Python Basics",
+                correctAnswer = ".py"
             )
         )
         isLoading = false
@@ -74,14 +95,15 @@ fun QuizScreen(subject: String) {
         }
     }
 
-    // Show loading indicator while fetching questions
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
     } else {
-        // Show instructions screen before the quiz starts
-        if (showInstructions) {
+        if (showResults) {
+            // Show Results Screen
+            ResultsScreen(score = score, totalQuestions = quizQuestions.size)
+        } else if (showInstructions) {
             InstructionsScreen(
                 subject = subject,
                 onStartQuiz = {
@@ -89,9 +111,7 @@ fun QuizScreen(subject: String) {
                     isTimerRunning = true
                 }
             )
-        }
-        // Show the quiz questions and options while quiz is ongoing
-        else {
+        } else {
             // Get the selected answer for the current question (if any)
             val selectedAnswer = selectedAnswers[currentQuestionIndex]
 
@@ -104,11 +124,16 @@ fun QuizScreen(subject: String) {
                     selectedAnswers[currentQuestionIndex] = answer
                 },
                 onNextClicked = {
-                    // Move to next question or show results if it's the last question
+                    // Calculate score for correct answers
+                    if (quizQuestions[currentQuestionIndex].correctAnswer == selectedAnswers[currentQuestionIndex]) {
+                        score++
+                    }
+                    // Move to the next question or show results if it's the last question
                     if (currentQuestionIndex < quizQuestions.size - 1) {
                         currentQuestionIndex++
                     } else {
                         showResults = true
+                        isTimerRunning = false
                     }
                 },
                 timer = timer
@@ -117,6 +142,85 @@ fun QuizScreen(subject: String) {
     }
 }
 
+@Composable
+fun ResultsScreen(score: Int, totalQuestions: Int) {
+    val passPercentage = 50
+    val highScorePercentage = 80
+    val percentage = (score.toDouble() / totalQuestions.toDouble()) * 100
+    val resultMessage = when {
+        percentage >= highScorePercentage -> "Congratulations! You passed with flying colors!"
+        percentage >= passPercentage -> "Great job! You passed!"
+        else -> "Oops! You failed. Try again."
+    }
+    val resultColor = when {
+        percentage >= highScorePercentage -> Color.Green
+        percentage >= passPercentage -> Color.Yellow
+        else -> Color.Red
+    }
+    val resultIcon = when {
+        percentage >= highScorePercentage -> Icons.Default.ThumbUp
+        percentage >= passPercentage -> Icons.Default.ThumbUp
+        else -> Icons.Default.Warning
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = resultIcon,
+            contentDescription = "Result Icon",
+            tint = resultColor,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = resultMessage,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = resultColor
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Score: $score / $totalQuestions",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = { /* Add restart logic */ }) {
+            Text(text = "Try Again")
+        }
+    }
+}
+
+@Composable
+fun InstructionsScreen(subject: String, onStartQuiz: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Welcome to the $subject Quiz",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Text(
+            text = "You will have 60 seconds to answer all questions. Good luck!",
+            fontSize = 18.sp,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Button(onClick = onStartQuiz, modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Start Quiz")
+        }
+    }
+}
 
 @Composable
 fun QuizContent(
@@ -225,34 +329,8 @@ fun QuizContent(
 }
 
 
-@Composable
-fun InstructionsScreen(subject: String, onStartQuiz: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Welcome to the $subject Quiz",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        Text(
-            text = "You will have 60 seconds to answer all questions. Good luck!",
-            fontSize = 18.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        Button(onClick = onStartQuiz, modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Start Quiz")
-        }
-    }
-}
-
 @Preview
 @Composable
 fun PreviewQuizScreen() {
-    QuizScreen(subject = "Sample Subject")
+    QuizScreen(subject = "Python")
 }

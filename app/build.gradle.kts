@@ -43,7 +43,7 @@ android {
 
 dependencies {
     implementation (libs.material)
-
+    implementation(libs.firebase.firestore.ktx)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.androidx.material.icons.extended)
