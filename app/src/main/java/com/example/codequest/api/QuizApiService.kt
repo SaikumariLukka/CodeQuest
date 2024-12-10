@@ -6,8 +6,11 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 
 interface QuizApiService {
-    @GET("getQuizQuestions")  // Adjust the endpoint to match your API
+    @GET("api.php")
     fun getQuizQuestions(
-        @Query("subject") subject: String  // Pass subject as a query parameter
+        @Query("amount") amount: Int,
+        @Query("category") category: Int,
+        @Query("type") type: String
     ): Call<QuizResponse>
 }
+
