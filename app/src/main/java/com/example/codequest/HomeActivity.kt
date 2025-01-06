@@ -31,7 +31,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.codequest.api.RetrofitInstance
 import com.example.codequest.api.models.QuizResponse
 import com.example.codequest.ui.theme.CodeQuestTheme
 import kotlinx.coroutines.Dispatchers
@@ -48,9 +47,6 @@ class HomeActivity : ComponentActivity() {
                 }
             }
         }
-
-        // Call this to add sample data for testing purposes
-        addSampleData()
     }
 
     private fun fetchQuizQuestions(subject: String, onResult: (QuizResponse?) -> Unit) {
@@ -80,157 +76,122 @@ class HomeActivity : ComponentActivity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
-    // Sample data insertion for Firestore
-    private fun addSampleData() {
-        val db = FirebaseFirestore.getInstance()
+    @Composable
+    fun MainScreen(fetchQuestions: (String, (QuizResponse?) -> Unit) -> Unit) {
+        val navController = rememberNavController()
 
-        // Sample data for Python quiz
-        val pythonQuiz = mapOf(
-            "questions" to listOf(
-                mapOf(
-                    "question" to "What is Python?",
-                    "options" to listOf("Programming Language", "Animal", "Country", "Food"),
-                    "correctAnswer" to "Programming Language"
-                ),
-                mapOf(
-                    "question" to "Which of these is used to define a function in Python?",
-                    "options" to listOf("def", "function", "fun", "fn"),
-                    "correctAnswer" to "def"
-                ),
-                mapOf(
-                    "question" to "What is the output of print(2 + 2)?",
-                    "options" to listOf("2", "4", "22", "Error"),
-                    "correctAnswer" to "4"
-                )
-            )
-        )
-
-        // Add data to Firestore with "Python" as the document ID
-        db.collection("quizzes").document("Python").set(pythonQuiz)
-            .addOnSuccessListener {
-                showToast("Sample data added successfully.")
-            }
-            .addOnFailureListener { e ->
-                showToast("Error adding sample data: ${e.message}")
-            }
-    }
-}
-
-@Composable
-fun MainScreen(fetchQuestions: (String, (QuizResponse?) -> Unit) -> Unit) {
-    val navController = rememberNavController()
-
-    Scaffold(
-        bottomBar = { BottomNavigationBar(navController) }
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = "home",
-            Modifier.padding(innerPadding)
-        ) {
-            composable("home") { HomeScreen(navController) }
-            composable("leaderboard") { LeaderboardScreen() }
-            composable("profile") { ProfileScreen() }
-            composable(
-                route = "quiz/{subject}",
-                arguments = listOf(navArgument("subject") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val subject = backStackEntry.arguments?.getString("subject") ?: "Unknown"
-                QuizScreen(subject) // Pass subject name to QuizScreen
+        Scaffold(
+            bottomBar = { BottomNavigationBar(navController) }
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = "home",
+                Modifier.padding(innerPadding)
+            ) {
+                composable("home") { HomeScreen(navController) }
+                composable("leaderboard") { LeaderboardScreen() }
+                composable("profile") { ProfileScreen() }
+                composable(
+                    route = "quiz/{subject}",
+                    arguments = listOf(navArgument("subject") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val subject = backStackEntry.arguments?.getString("subject") ?: "Unknown"
+                    QuizScreen(subject,navController) // Pass subject name to QuizScreen
+                }
             }
         }
     }
-}
 
-@Composable
-fun BottomNavigationBar(navController: NavHostController) {
-    NavigationBar {
-        NavigationBarItem(
-            icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-            label = { Text("Home") },
-            selected = navController.currentDestination?.route == "home",
-            onClick = { navController.navigate("home") }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Filled.Star, contentDescription = "Leaderboard") },
-            label = { Text("Leaderboard") },
-            selected = navController.currentDestination?.route == "leaderboard",
-            onClick = { navController.navigate("leaderboard") }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Filled.AccountCircle, contentDescription = "Profile") },
-            label = { Text("Profile") },
-            selected = navController.currentDestination?.route == "profile",
-            onClick = { navController.navigate("profile") }
-        )
+    @Composable
+    fun BottomNavigationBar(navController: NavHostController) {
+        NavigationBar {
+            NavigationBarItem(
+                icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
+                label = { Text("Home") },
+                selected = navController.currentDestination?.route == "home",
+                onClick = { navController.navigate("home") }
+            )
+            NavigationBarItem(
+                icon = { Icon(Icons.Filled.Star, contentDescription = "Leaderboard") },
+                label = { Text("Leaderboard") },
+                selected = navController.currentDestination?.route == "leaderboard",
+                onClick = { navController.navigate("leaderboard") }
+            )
+            NavigationBarItem(
+                icon = { Icon(Icons.Filled.AccountCircle, contentDescription = "Profile") },
+                label = { Text("Profile") },
+                selected = navController.currentDestination?.route == "profile",
+                onClick = { navController.navigate("profile") }
+            )
+        }
     }
-}
 
-@Composable
-fun HomeScreen(navController: NavHostController) {
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.background),
-            contentDescription = "Background Image",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-
-        // Making the Column scrollable by wrapping it with Modifier.verticalScroll
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()), // Enable vertical scrolling
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    @Composable
+    fun HomeScreen(navController: NavHostController) {
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Text(
-                text = "Choose a Subject",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(bottom = 16.dp)
+            Image(
+                painter = painterResource(id = R.drawable.background),
+                contentDescription = "Background Image",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
 
-            // List of subjects with corresponding images
-            val subjects = listOf(
-                Pair("Python", R.drawable.python),
-                Pair("Object Oriented Programming", R.drawable.oop),
-                Pair("Machine Learning", R.drawable.machinelearning)
-            )
+            // Making the Column scrollable by wrapping it with Modifier.verticalScroll
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()), // Enable vertical scrolling
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Choose a Subject",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-            subjects.forEach { (subject, imageRes) ->
-                Button(
-                    onClick = {
-                        // Pass the subject name to the quiz screen
-                        navController.navigate("quiz/$subject")
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Box(
+                // List of subjects with corresponding images
+                val subjects = listOf(
+                    Pair("Python", R.drawable.python),
+                    Pair("OOP", R.drawable.oop),
+                    Pair("Machine Learning", R.drawable.machinelearning)
+                )
+
+                subjects.forEach { (subject, imageRes) ->
+                    Button(
+                        onClick = {
+                            // Pass the subject name to the quiz screen
+                            navController.navigate("quiz/$subject")
+                        },
                         modifier = Modifier
-                            .fillMaxWidth()  // This makes the image 100% of the screen width
-                            .height(200.dp)  // Adjusted height to make the image larger
-                            .clip(RoundedCornerShape(16.dp))  // Apply rounded corners to the image
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        Image(
-                            painter = painterResource(id = imageRes),
-                            contentDescription = subject,
+                        Box(
                             modifier = Modifier
-                                .fillMaxSize()  // Image takes up the full Box size
-                                .padding(8.dp),  // Padding around the image
-                            contentScale = ContentScale.Crop
-                        )
+                                .fillMaxWidth()  // This makes the image 100% of the screen width
+                                .height(200.dp)  // Adjusted height to make the image larger
+                                .clip(RoundedCornerShape(16.dp))  // Apply rounded corners to the image
+                        ) {
+                            Image(
+                                painter = painterResource(id = imageRes),
+                                contentDescription = subject,
+                                modifier = Modifier
+                                    .fillMaxSize()  // Image takes up the full Box size
+                                    .padding(8.dp),  // Padding around the image
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
                 }
             }

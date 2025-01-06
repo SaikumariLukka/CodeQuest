@@ -6,6 +6,7 @@ import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -32,6 +33,7 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.firestore.FirebaseFirestore
 
 class SignUpActivity : ComponentActivity() {
 
@@ -66,20 +68,37 @@ class SignUpActivity : ComponentActivity() {
                         finish() // Close the sign-up activity
                     },
                     onGoogleSignUp = { handleGoogleSignUp() },
-                    handleEmailSignUp = { email, password, onSignUpSuccess ->
-                        handleEmailSignUp(email, password, onSignUpSuccess)
+                    handleEmailSignUp = { fullName, email, password, onSignUpSuccess ->
+                        handleEmailSignUp(fullName, email, password, onSignUpSuccess)
                     }
                 )
             }
         }
     }
 
-    private fun handleEmailSignUp(email: String, password: String, onSignUpSuccess: () -> Unit) {
+    private fun handleEmailSignUp(fullName: String, email: String, password: String, onSignUpSuccess: () -> Unit) {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    Toast.makeText(this, "Sign-Up Successful", Toast.LENGTH_SHORT).show()
-                    onSignUpSuccess()
+                    val user = auth.currentUser
+
+                    // Store Full Name in Firebase Firestore
+                    val userProfile = hashMapOf(
+                        "fullName" to fullName,
+                        "email" to email
+                    )
+
+                    // Assuming you're using Firestore
+                    val db = FirebaseFirestore.getInstance()
+                    val userRef = db.collection("users").document(user?.uid ?: "")
+                    userRef.set(userProfile)
+                        .addOnSuccessListener {
+                            Toast.makeText(this, "Sign-Up Successful", Toast.LENGTH_SHORT).show()
+                            onSignUpSuccess()
+                        }
+                        .addOnFailureListener { exception ->
+                            Toast.makeText(this, "Error saving user profile: ${exception.message}", Toast.LENGTH_SHORT).show()
+                        }
                 } else {
                     Toast.makeText(this, "Sign-Up Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
@@ -90,7 +109,7 @@ class SignUpActivity : ComponentActivity() {
         val oneTapSignUp = oneTapClient.beginSignIn(signInRequest)
         oneTapSignUp.addOnSuccessListener { result ->
             val signUpIntent = result.pendingIntent.intentSender
-            // googleSignUpLauncher.launch(signUpIntent)
+            googleSignUpLauncher.launch(IntentSenderRequest.Builder(signUpIntent).build())
         }.addOnFailureListener { exception ->
             Toast.makeText(this, "Google Sign-Up Failed: ${exception.message}", Toast.LENGTH_SHORT).show()
         }
@@ -123,15 +142,16 @@ class SignUpActivity : ComponentActivity() {
 fun SignUpScreen(
     onSignUpSuccess: () -> Unit,
     onGoogleSignUp: () -> Unit,
-    handleEmailSignUp: (String, String, () -> Unit) -> Unit
+    handleEmailSignUp: (String, String, String, () -> Unit) -> Unit // Pass fullName as an argument
 ) {
     var email by remember { mutableStateOf(TextFieldValue("")) }
     var password by remember { mutableStateOf(TextFieldValue("")) }
     var confirmPassword by remember { mutableStateOf(TextFieldValue("")) }
+    var fullName by remember { mutableStateOf(TextFieldValue("")) } // New state for full name
     var passwordVisible by remember { mutableStateOf(false) }
-    var signUpError by remember { mutableStateOf<String?>(null) } // Error message
+    var signUpError by remember { mutableStateOf<String?>(null) }
 
-    val context = LocalContext.current // Correct context usage inside composable
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -157,6 +177,16 @@ fun SignUpScreen(
                     .size(250.dp)
                     .padding(bottom = 15.dp),
                 contentScale = ContentScale.Fit
+            )
+
+            // Full Name input field
+            OutlinedTextField(
+                value = fullName,
+                onValueChange = { fullName = it },
+                label = { Text("Full Name") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
             )
 
             OutlinedTextField(
@@ -212,13 +242,14 @@ fun SignUpScreen(
                 onClick = {
                     // Validation checks
                     when {
+                        fullName.text.isBlank() -> signUpError = "Full Name cannot be empty."
                         email.text.isBlank() -> signUpError = "Email cannot be empty."
                         !Patterns.EMAIL_ADDRESS.matcher(email.text).matches() -> signUpError = "Enter a valid email address."
                         password.text.isBlank() -> signUpError = "Password cannot be empty."
                         password.text != confirmPassword.text -> signUpError = "Passwords do not match."
                         else -> {
                             signUpError = null
-                            handleEmailSignUp(email.text, password.text, onSignUpSuccess)
+                            handleEmailSignUp(fullName.text, email.text, password.text, onSignUpSuccess)
                         }
                     }
                 },
@@ -247,7 +278,6 @@ fun SignUpScreen(
                     text = "Login",
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable {
-                        // Correctly use context to navigate in composable
                         val loginIntent = Intent(context, LoginActivity::class.java)
                         context.startActivity(loginIntent)
                     }

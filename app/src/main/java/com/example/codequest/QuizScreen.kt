@@ -1,13 +1,19 @@
 package com.example.codequest
 
 import android.annotation.SuppressLint
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -15,18 +21,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import androidx.navigation.NavController
 import com.example.codequest.api.models.QuizQuestion
-import com.example.codequest.api.models.QuizResponse
+import com.google.firebase.firestore.FirebaseFirestore
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.delay
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
-fun QuizScreen(subject: String) {
+fun QuizScreen(subject: String, navController: NavController) {
     val context = LocalContext.current
     var quizQuestions by remember { mutableStateOf<List<QuizQuestion>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -37,113 +48,193 @@ fun QuizScreen(subject: String) {
     var selectedAnswers by remember { mutableStateOf(mutableMapOf<Int, String>()) }
     var showResults by remember { mutableStateOf(false) }
     var score by remember { mutableStateOf(0) }
+    var showAlertDialog by remember { mutableStateOf(false) }
+    var isPaused by remember { mutableStateOf(false) }
 
-    // Mock Python-related quiz questions
-    LaunchedEffect(subject) {
-        quizQuestions = listOf(
-            QuizQuestion(
-                question = "What is Python?",
-                options = listOf("Programming language", "Snake", "IDE", "Game"),
-                category = "Python Basics",
-                correctAnswer = "Programming language"
-            ),
-            QuizQuestion(
-                question = "Which of the following is a Python framework?",
-                options = listOf("Django", "Angular", "React", "Vue"),
-                category = "Python Frameworks",
-                correctAnswer = "Django"
-            ),
-            QuizQuestion(
-                question = "What is the output of 'print(2**3)'?",
-                options = listOf("6", "8", "4", "2"),
-                category = "Python Arithmetic",
-                correctAnswer = "8"
-            ),
-            QuizQuestion(
-                question = "Which keyword is used to define a function in Python?",
-                options = listOf("function", "def", "lambda", "define"),
-                category = "Python Functions",
-                correctAnswer = "def"
-            ),
-            QuizQuestion(
-                question = "What is the use of 'break' in Python?",
-                options = listOf("Exits a loop", "Stops the program", "Continues a loop", "Starts a loop"),
-                category = "Python Loops",
-                correctAnswer = "Exits a loop"
-            ),
-            QuizQuestion(
-                question = "What is the correct file extension for Python files?",
-                options = listOf(".java", ".py", ".txt", ".cpp"),
-                category = "Python Basics",
-                correctAnswer = ".py"
-            )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(id = R.drawable.background),
+            contentDescription = "Background Image",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
         )
-        isLoading = false
-    }
 
-    // Timer logic
-    LaunchedEffect(isTimerRunning) {
-        if (isTimerRunning) {
-            while (timer > 0) {
-                delay(1000L)
-                timer -= 1
+        // Back Button and Timer Controls
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(onClick = { showAlertDialog = true }) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
             }
-            if (timer == 0) {
-                showResults = true
-                isTimerRunning = false
+            Row {
+                if (isTimerRunning) {
+                    IconButton(onClick = {
+                        isTimerRunning = false
+                        isPaused = true
+                    }) {
+                        Icon(Icons.Default.Pause, contentDescription = "Pause")
+                    }
+                } else if (isPaused) {
+                    IconButton(onClick = {
+                        isTimerRunning = true
+                        isPaused = false
+                    }) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Resume")
+                    }
+                }
             }
         }
-    }
 
-    if (isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-        if (showResults) {
-            // Show Results Screen
-            ResultsScreen(score = score, totalQuestions = quizQuestions.size)
-        } else if (showInstructions) {
-            InstructionsScreen(
-                subject = subject,
-                onStartQuiz = {
-                    showInstructions = false
-                    isTimerRunning = true
+        // Alert Dialog for stopping the quiz
+        if (showAlertDialog) {
+            AlertDialog(
+                onDismissRequest = { showAlertDialog = false },
+                title = { Text("Are you sure?") },
+                text = { Text("Do you want to stop the quiz?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showAlertDialog = false
+                        currentQuestionIndex = 0
+                        selectedAnswers.clear()
+                        score = 0
+                        timer = 60
+                        showResults = false
+                        isTimerRunning = false
+                        showInstructions = true
+                    }) {
+                        Text("Yes")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAlertDialog = false }) {
+                        Text("No")
+                    }
                 }
             )
-        } else {
-            // Get the selected answer for the current question (if any)
-            val selectedAnswer = selectedAnswers[currentQuestionIndex]
+        }
 
-            QuizContent(
-                question = quizQuestions[currentQuestionIndex],
-                questionIndex = currentQuestionIndex,
-                totalQuestions = quizQuestions.size,
-                selectedAnswer = selectedAnswer,
-                onAnswerSelected = { answer ->
-                    selectedAnswers[currentQuestionIndex] = answer
-                },
-                onNextClicked = {
-                    // Calculate score for correct answers
-                    if (quizQuestions[currentQuestionIndex].correctAnswer == selectedAnswers[currentQuestionIndex]) {
-                        score++
-                    }
-                    // Move to the next question or show results if it's the last question
-                    if (currentQuestionIndex < quizQuestions.size - 1) {
-                        currentQuestionIndex++
+        // Fetch quiz data from Firestore based on the subject
+        LaunchedEffect(subject) {
+            val db = FirebaseFirestore.getInstance()
+            db.collection("quizzes").document(subject).get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val questions = document.get("questions") as? List<Map<String, Any>> ?: emptyList()
+                        quizQuestions = questions.mapNotNull { questionMap ->
+                            try {
+                                QuizQuestion(
+                                    question = questionMap["question"] as? String ?: return@mapNotNull null,
+                                    options = questionMap["options"] as? List<String> ?: return@mapNotNull null,
+                                    category = questionMap["category"] as? String ?: "General",
+                                    correctAnswer = questionMap["correctAnswer"] as? String ?: ""
+                                )
+                            } catch (e: Exception) {
+                                Log.e("QuizScreen", "Error parsing question: ${e.message}")
+                                null
+                            }
+                        }
+                        isLoading = false
                     } else {
-                        showResults = true
-                        isTimerRunning = false
+                        Toast.makeText(context, "No quiz found for the subject", Toast.LENGTH_SHORT).show()
+                        isLoading = false
                     }
-                },
-                timer = timer
-            )
+                }
+                .addOnFailureListener { exception ->
+                    Toast.makeText(context, "Error fetching data: ${exception.message}", Toast.LENGTH_SHORT).show()
+                    isLoading = false
+                }
+        }
+
+        LaunchedEffect(isTimerRunning) {
+            if (isTimerRunning) {
+                while (timer > 0) {
+                    delay(1000L)
+                    if (!isTimerRunning) break // Break if timer is stopped
+                    timer -= 1
+                }
+                if (timer == 0) {
+                    showResults = true
+                    isTimerRunning = false
+                }
+            }
+        }
+
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            if (showResults) {
+                // Show Results Screen
+                ResultsScreen(
+                    score = score,
+                    totalQuestions = quizQuestions.size,
+                    subject = subject,
+                    onTryAgain = {
+                        currentQuestionIndex = 0
+                        selectedAnswers.clear()
+                        score = 0
+                        timer = 60
+                        showResults = false
+                        isTimerRunning = false
+                        showInstructions = true
+                    },
+                    onSaveAndViewLeaderboard = {
+                        // Navigate to leaderboard screen after saving
+                        navController.navigate("leaderboard_screen")
+                    }
+                )
+            } else if (showInstructions) {
+                InstructionsScreen(
+                    subject = subject,
+                    onStartQuiz = {
+                        showInstructions = false
+                        isTimerRunning = true
+                    }
+                )
+            } else {
+                // Get the selected answer for the current question (if any)
+                val selectedAnswer = selectedAnswers[currentQuestionIndex]
+
+                QuizContent(
+                    question = quizQuestions[currentQuestionIndex],
+                    questionIndex = currentQuestionIndex,
+                    totalQuestions = quizQuestions.size,
+                    selectedAnswer = selectedAnswer,
+                    onAnswerSelected = { answer -> selectedAnswers[currentQuestionIndex] = answer },
+                    onNextClicked = {
+                        // Calculate score for correct answers
+                        if (quizQuestions[currentQuestionIndex].correctAnswer == selectedAnswers[currentQuestionIndex]) {
+                            score++
+                        }
+                        // Move to the next question or show results if it's the last question
+                        if (currentQuestionIndex < quizQuestions.size - 1) {
+                            currentQuestionIndex++
+                        } else {
+                            showResults = true
+                            isTimerRunning = false
+                        }
+                    },
+                    timer = timer
+                )
+            }
         }
     }
 }
 
+
 @Composable
-fun ResultsScreen(score: Int, totalQuestions: Int) {
+fun ResultsScreen(
+    score: Int,
+    totalQuestions: Int,
+    subject: String,
+    onTryAgain: () -> Unit,
+    onSaveAndViewLeaderboard: () -> Unit
+) {
+    val db = FirebaseFirestore.getInstance()
     val passPercentage = 50
     val highScorePercentage = 80
     val percentage = (score.toDouble() / totalQuestions.toDouble()) * 100
@@ -162,6 +253,9 @@ fun ResultsScreen(score: Int, totalQuestions: Int) {
         percentage >= passPercentage -> Icons.Default.ThumbUp
         else -> Icons.Default.Warning
     }
+
+    val currentDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+    var isSaved by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -190,11 +284,46 @@ fun ResultsScreen(score: Int, totalQuestions: Int) {
             fontWeight = FontWeight.Medium
         )
         Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = { /* Add restart logic */ }) {
+
+        Button(onClick = onTryAgain) {
             Text(text = "Try Again")
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                if (!isSaved) {
+                    val resultData = mapOf(
+                        "username" to "YourUsername", // Replace with actual username
+                        "score" to score,
+                        "date" to currentDateTime.split(" ")[0],
+                        "time" to currentDateTime.split(" ")[1]
+                    )
+                    db.collection("leaderboard")
+                        .document(subject)
+                        .collection("scores")
+                        .add(resultData)
+                        .addOnSuccessListener {
+                            Log.d("Firestore", "Result saved successfully")
+                            isSaved = true
+                            // Delay navigation slightly to ensure Firestore operation finishes
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                onSaveAndViewLeaderboard()
+                            }, 1000)
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("Firestore", "Error saving result: ${e.message}")
+                        }
+                }
+            }
+        ) {
+            Text(text = if (isSaved) "Saved! View Leaderboard" else "Save Result & View Leaderboard")
+        }
+
     }
 }
+
 
 @Composable
 fun InstructionsScreen(subject: String, onStartQuiz: () -> Unit) {
@@ -313,24 +442,15 @@ fun QuizContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // "Next" Button to navigate between questions
+        // Next Button
         Button(
             onClick = onNextClicked,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            enabled = selectedAnswer != null
+            modifier = Modifier.fillMaxWidth(),
+            enabled = selectedAnswer != null // Ensure Next button is enabled only when an option is selected
         ) {
             Text(text = if (questionIndex == totalQuestions - 1) "Submit" else "Next")
         }
     }
-}
-
-
-@Preview
-@Composable
-fun PreviewQuizScreen() {
-    QuizScreen(subject = "Python")
 }
