@@ -52,9 +52,6 @@ fun LeaderboardScreen() {
                 subjects.value = subjectList
                 Log.d("Leaderboard", "Fetched subjects: $subjectList")  // Debug log
 
-                // Check if subjects are fetched correctly
-                Log.d("Leaderboard", "Subjects fetched: ${subjectList.size}")  // Debug the number of subjects
-
                 // Fetch scores for each subject
                 subjectList.forEach { subject ->
                     db.collection("leaderboard")
@@ -82,7 +79,6 @@ fun LeaderboardScreen() {
             .addOnFailureListener { e ->
                 Log.e("Leaderboard", "Error fetching subjects: ${e.message}")
             }
-
     }
 
     // UI for the leaderboard screen

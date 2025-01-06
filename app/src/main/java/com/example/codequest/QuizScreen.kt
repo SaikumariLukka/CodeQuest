@@ -37,7 +37,7 @@ import kotlinx.coroutines.delay
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
-fun QuizScreen(subject: String) {
+fun QuizScreen(subject: String, navController: NavController) {
     val context = LocalContext.current
     var quizQuestions by remember { mutableStateOf<List<QuizQuestion>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -182,8 +182,9 @@ fun QuizScreen(subject: String) {
                         isTimerRunning = false
                         showInstructions = true
                     },
-                    onSaveResult = {
-                        // Save the result but do not navigate to the leaderboard screen
+                    onSaveAndViewLeaderboard = {
+                        // Navigate to leaderboard screen after saving
+                        navController.navigate("leaderboard_screen")
                     }
                 )
             } else if (showInstructions) {
@@ -224,13 +225,14 @@ fun QuizScreen(subject: String) {
     }
 }
 
+
 @Composable
 fun ResultsScreen(
     score: Int,
     totalQuestions: Int,
     subject: String,
     onTryAgain: () -> Unit,
-    onSaveResult: () -> Unit
+    onSaveAndViewLeaderboard: () -> Unit
 ) {
     val db = FirebaseFirestore.getInstance()
     val passPercentage = 50
@@ -305,7 +307,10 @@ fun ResultsScreen(
                         .addOnSuccessListener {
                             Log.d("Firestore", "Result saved successfully")
                             isSaved = true
-                            onSaveResult()  // Do not navigate, just save and show result
+                            // Delay navigation slightly to ensure Firestore operation finishes
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                onSaveAndViewLeaderboard()
+                            }, 1000)
                         }
                         .addOnFailureListener { e ->
                             Log.e("Firestore", "Error saving result: ${e.message}")
@@ -313,11 +318,11 @@ fun ResultsScreen(
                 }
             }
         ) {
-            Text(text = if (isSaved) "Saved!" else "Save Result")
+            Text(text = if (isSaved) "Saved! View Leaderboard" else "Save Result & View Leaderboard")
         }
+
     }
 }
-
 
 
 @Composable
