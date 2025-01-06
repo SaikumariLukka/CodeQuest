@@ -88,18 +88,25 @@ class HomeActivity : ComponentActivity() {
                 startDestination = "home",
                 Modifier.padding(innerPadding)
             ) {
-                composable("home") { HomeScreen(navController) }
-                composable("leaderboard") { LeaderboardScreen() }
-                composable("profile") { ProfileScreen() }
+                composable("home") {
+                    HomeScreen(navController)
+                }
+                composable("leaderboard") {
+                    LeaderboardScreen()
+                }
+                composable("profile") {
+                    ProfileScreen()
+                }
                 composable(
                     route = "quiz/{subject}",
                     arguments = listOf(navArgument("subject") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val subject = backStackEntry.arguments?.getString("subject") ?: "Unknown"
-                    QuizScreen(subject,navController) // Pass subject name to QuizScreen
+                    QuizScreen(subject = subject) // Pass subject name to QuizScreen
                 }
             }
         }
+
     }
 
     @Composable

@@ -37,7 +37,7 @@ import kotlinx.coroutines.delay
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
-fun QuizScreen(subject: String, navController: NavController) {
+fun QuizScreen(subject: String) {
     val context = LocalContext.current
     var quizQuestions by remember { mutableStateOf<List<QuizQuestion>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -182,9 +182,8 @@ fun QuizScreen(subject: String, navController: NavController) {
                         isTimerRunning = false
                         showInstructions = true
                     },
-                    onSaveAndViewLeaderboard = {
-                        // Navigate to leaderboard screen after saving
-                        navController.navigate("leaderboard_screen")
+                    onSaveResult = {
+                        // Save the result but do not navigate to the leaderboard screen
                     }
                 )
             } else if (showInstructions) {
@@ -225,14 +224,13 @@ fun QuizScreen(subject: String, navController: NavController) {
     }
 }
 
-
 @Composable
 fun ResultsScreen(
     score: Int,
     totalQuestions: Int,
     subject: String,
     onTryAgain: () -> Unit,
-    onSaveAndViewLeaderboard: () -> Unit
+    onSaveResult: () -> Unit
 ) {
     val db = FirebaseFirestore.getInstance()
     val passPercentage = 50
@@ -307,10 +305,7 @@ fun ResultsScreen(
                         .addOnSuccessListener {
                             Log.d("Firestore", "Result saved successfully")
                             isSaved = true
-                            // Delay navigation slightly to ensure Firestore operation finishes
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                onSaveAndViewLeaderboard()
-                            }, 1000)
+                            onSaveResult()  // Do not navigate, just save and show result
                         }
                         .addOnFailureListener { e ->
                             Log.e("Firestore", "Error saving result: ${e.message}")
@@ -318,11 +313,11 @@ fun ResultsScreen(
                 }
             }
         ) {
-            Text(text = if (isSaved) "Saved! View Leaderboard" else "Save Result & View Leaderboard")
+            Text(text = if (isSaved) "Saved!" else "Save Result")
         }
-
     }
 }
+
 
 
 @Composable

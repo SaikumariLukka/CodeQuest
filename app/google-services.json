@@ -12,7 +12,12 @@
           "package_name": "com.example.codequest"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "125894436753-cmpti0jf2j3rn6m7nolq70cciubaf9tf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBPJlsVA7HVmxMdG4KBLUxYbG2O_YQvisM"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "125894436753-cmpti0jf2j3rn6m7nolq70cciubaf9tf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

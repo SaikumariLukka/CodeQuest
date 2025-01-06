@@ -27,7 +27,7 @@ class LeaderboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            CodeQuestTheme {
+            MaterialTheme {
                 LeaderboardScreen()
             }
         }
@@ -41,6 +41,7 @@ fun LeaderboardScreen() {
     // States for subjects and leaderboard data
     val subjects = remember { mutableStateOf(listOf<String>()) }
     val leaderboardData = remember { mutableStateOf(mapOf<String, List<Map<String, Any>>>()) }
+    val showResults = remember { mutableStateOf(false) } // State for controlling the visibility of results
 
     // Fetch subjects and leaderboard data
     LaunchedEffect(Unit) {
@@ -49,6 +50,10 @@ fun LeaderboardScreen() {
             .addOnSuccessListener { result ->
                 val subjectList = result.documents.map { it.id }
                 subjects.value = subjectList
+                Log.d("Leaderboard", "Fetched subjects: $subjectList")  // Debug log
+
+                // Check if subjects are fetched correctly
+                Log.d("Leaderboard", "Subjects fetched: ${subjectList.size}")  // Debug the number of subjects
 
                 // Fetch scores for each subject
                 subjectList.forEach { subject ->
@@ -58,18 +63,26 @@ fun LeaderboardScreen() {
                         .orderBy("score", Query.Direction.DESCENDING)
                         .get()
                         .addOnSuccessListener { scoresResult ->
+                            val data = scoresResult.documents.map {
+                                it.data ?: emptyMap<String, Any>()
+                            }
                             leaderboardData.value = leaderboardData.value.toMutableMap().apply {
-                                put(subject, scoresResult.documents.map { it.data ?: emptyMap() })
+                                put(subject, data)
+                            }
+                            Log.d("Leaderboard", "Fetched data for $subject: $data") // Debug log
+                            data.forEach {
+                                Log.d("Leaderboard Data", "Entry: $it") // Log each entry in the subject
                             }
                         }
                         .addOnFailureListener { e ->
-                            Log.e("Firestore", "Error fetching scores for $subject: ${e.message}")
+                            Log.e("Leaderboard", "Error fetching scores for $subject: ${e.message}")
                         }
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("Firestore", "Error fetching subjects: ${e.message}")
+                Log.e("Leaderboard", "Error fetching subjects: ${e.message}")
             }
+
     }
 
     // UI for the leaderboard screen
@@ -89,50 +102,70 @@ fun LeaderboardScreen() {
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Display leaderboard for each subject
-        subjects.value.forEach { subject ->
-            Text(
-                text = subject,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+        // Button to toggle results visibility
+        Button(
+            onClick = {
+                showResults.value = !showResults.value // Toggle the visibility of results
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF42A5F5)),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.padding(bottom = 16.dp)
+        ) {
+            Text("View Results", color = Color.White)
+        }
 
-            leaderboardData.value[subject]?.forEach { scoreEntry ->
-                // Format timestamp if present
-                val timestamp = scoreEntry["timestamp"] as? Timestamp
-                val formattedDate = timestamp?.toDate()?.let { formatTimestamp(it) } ?: "N/A"
+        // Conditionally show leaderboard results if `showResults` is true
+        if (showResults.value) {
+            // Display leaderboard for each subject
+            if (subjects.value.isNotEmpty()) {
+                subjects.value.forEach { subject ->
+                    Text(
+                        text = subject,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
 
-                // Display each leaderboard entry
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            // User and score info
-                            Text(
-                                text = "${scoreEntry["username"]} - ${scoreEntry["score"]} Points",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            // Display the formatted date and time
-                            Text(
-                                text = formattedDate,
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
+                    leaderboardData.value[subject]?.forEach { scoreEntry ->
+                        // Format timestamp if present
+                        val timestamp = scoreEntry["timestamp"] as? Timestamp
+                        val formattedDate = timestamp?.toDate()?.let { formatTimestamp(it) } ?: "N/A"
+
+                        // Display each leaderboard entry
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    // User and score info
+                                    Text(
+                                        text = "${scoreEntry["username"]} - ${scoreEntry["score"]} Points",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    // Display the formatted date and time
+                                    Text(
+                                        text = formattedDate,
+                                        fontSize = 14.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
                         }
                     }
                 }
+            } else {
+                // Display loading or no results if subjects are empty
+                Text("No subjects available", color = Color.Gray)
             }
         }
     }
