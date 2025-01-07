@@ -307,10 +307,7 @@ fun ResultsScreen(
                         .addOnSuccessListener {
                             Log.d("Firestore", "Result saved successfully")
                             isSaved = true
-                            // Delay navigation slightly to ensure Firestore operation finishes
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                onSaveAndViewLeaderboard()
-                            }, 1000)
+                            // No navigation after saving the score
                         }
                         .addOnFailureListener { e ->
                             Log.e("Firestore", "Error saving result: ${e.message}")
@@ -318,11 +315,12 @@ fun ResultsScreen(
                 }
             }
         ) {
-            Text(text = if (isSaved) "Saved! View Leaderboard" else "Save Result & View Leaderboard")
+            Text(text = if (isSaved) "Saved!" else "Save Result")
         }
 
     }
 }
+
 
 
 @Composable
