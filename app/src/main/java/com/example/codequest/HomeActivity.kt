@@ -102,7 +102,7 @@ class HomeActivity : ComponentActivity() {
                     arguments = listOf(navArgument("subject") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val subject = backStackEntry.arguments?.getString("subject") ?: "Unknown"
-                    QuizScreen(subject = subject) // Pass subject name to QuizScreen
+                    QuizScreen(subject = subject, navController = navController) // Pass subject name to QuizScreen
                 }
             }
         }
