@@ -4,11 +4,13 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,44 +38,50 @@ class LeaderboardActivity : ComponentActivity() {
 fun LeaderboardScreen() {
     val db = FirebaseFirestore.getInstance()
 
+    // States for subjects and leaderboard data
     val subjects = remember { mutableStateOf(listOf<String>()) }
-    val leaderboardData = remember { mutableStateOf(emptyMap<String, List<Map<String, Any>>>()) }
-    val isLoading = remember { mutableStateOf(true) }
-    val expandedSubjects = remember { mutableStateOf(setOf<String>()) }
+    val leaderboardData = remember { mutableStateOf(mapOf<String, List<Map<String, Any>>>()) }
+    val showResults = remember { mutableStateOf(false) } // State for controlling the visibility of results
 
+    // Fetch subjects and leaderboard data
     LaunchedEffect(Unit) {
-        db.collection("leaderboard")
-            .addSnapshotListener { result, error ->
-                if (error != null) {
-                    Log.e("FirestoreError", "Error fetching subjects: ${error.message}")
-                    isLoading.value = false
-                    return@addSnapshotListener
-                }
-
-                val subjectList = result?.documents?.map { it.id } ?: emptyList()
+        // Fetch the subjects from the leaderboard collection
+        db.collection("leaderboard").get()
+            .addOnSuccessListener { result ->
+                val subjectList = result.documents.map { it.id }
                 subjects.value = subjectList
+                Log.d("Leaderboard", "Fetched subjects: $subjectList")  // Debug log
 
+                // Fetch scores for each subject
                 subjectList.forEach { subject ->
                     db.collection("leaderboard")
                         .document(subject)
                         .collection("scores")
                         .orderBy("score", Query.Direction.DESCENDING)
-                        .addSnapshotListener { scoresResult, scoresError ->
-                            if (scoresError != null) {
-                                Log.e("FirestoreError", "Error fetching scores for $subject: ${scoresError.message}")
-                                return@addSnapshotListener
+                        .get()
+                        .addOnSuccessListener { scoresResult ->
+                            val data = scoresResult.documents.map {
+                                it.data ?: emptyMap<String, Any>()
                             }
-
-                            val data = scoresResult?.documents?.map { it.data ?: emptyMap() } ?: emptyList()
                             leaderboardData.value = leaderboardData.value.toMutableMap().apply {
                                 put(subject, data)
-                            }.toMap()
-                            isLoading.value = false
+                            }
+                            Log.d("Leaderboard", "Fetched data for $subject: $data") // Debug log
+                            data.forEach {
+                                Log.d("Leaderboard Data", "Entry: $it") // Log each entry in the subject
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("Leaderboard", "Error fetching scores for $subject: ${e.message}")
                         }
                 }
             }
+            .addOnFailureListener { e ->
+                Log.e("Leaderboard", "Error fetching subjects: ${e.message}")
+            }
     }
 
+    // UI for the leaderboard screen
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -81,6 +89,7 @@ fun LeaderboardScreen() {
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Leaderboard Title
         Text(
             text = "Leaderboard",
             fontSize = 24.sp,
@@ -89,71 +98,76 @@ fun LeaderboardScreen() {
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        if (isLoading.value) {
-            CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-        } else {
+        // Button to toggle results visibility
+        Button(
+            onClick = {
+                showResults.value = !showResults.value // Toggle the visibility of results
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF42A5F5)),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.padding(bottom = 16.dp)
+        ) {
+            Text("View Results", color = Color.White)
+        }
+
+        // Conditionally show leaderboard results if `showResults` is true
+        if (showResults.value) {
+            // Display leaderboard for each subject
             if (subjects.value.isNotEmpty()) {
                 subjects.value.forEach { subject ->
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = subject,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
+                    Text(
+                        text = subject,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    leaderboardData.value[subject]?.forEach { scoreEntry ->
+                        // Format timestamp if present
+                        val timestamp = scoreEntry["timestamp"] as? Timestamp
+                        val formattedDate = timestamp?.toDate()?.let { formatTimestamp(it) } ?: "N/A"
+
+                        // Display each leaderboard entry
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                                .clickable {
-                                    expandedSubjects.value = if (expandedSubjects.value.contains(subject)) {
-                                        expandedSubjects.value - subject
-                                    } else {
-                                        expandedSubjects.value + subject
-                                    }
-                                }
-                        )
-
-                        if (expandedSubjects.value.contains(subject)) {
-                            leaderboardData.value[subject]?.forEach { scoreEntry ->
-                                val timestamp = scoreEntry["timestamp"] as? Timestamp
-                                val formattedDate = timestamp?.toDate()?.let { formatTimestamp(it) } ?: "N/A"
-
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Column {
-                                            Text(
-                                                text = "${scoreEntry["username"]} - ${scoreEntry["score"]} Points",
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                            Text(
-                                                text = formattedDate,
-                                                fontSize = 14.sp,
-                                                color = Color.Gray
-                                            )
-                                        }
-                                    }
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    // User and score info
+                                    Text(
+                                        text = "${scoreEntry["username"]} - ${scoreEntry["score"]} Points",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    // Display the formatted date and time
+                                    Text(
+                                        text = formattedDate,
+                                        fontSize = 14.sp,
+                                        color = Color.Gray
+                                    )
                                 }
                             }
                         }
                     }
                 }
             } else {
+                // Display loading or no results if subjects are empty
                 Text("No subjects available", color = Color.Gray)
             }
         }
     }
 }
 
+// Function to format Firestore Timestamp to a human-readable string
 fun formatTimestamp(date: Date): String {
     val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     return format.format(date)
